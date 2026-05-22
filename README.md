@@ -1,0 +1,1 @@
+An app that runs abundance and mean-length based indicators for stocks that have SS3 stock assessments. These approaches can be used as either a trigger to prioritize a full stock assessment or could be developed into a managment procedure. These methods are meant to help allevaite resource limitations that prohibit full assessments for all stocks.
