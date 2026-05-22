@@ -17,49 +17,50 @@ ui <- page_sidebar(
       helpText("Upload an RData file containing r4ss model output")
     ),
     card(
-      card_header("Parameters"),
-      numericInput(
+      card_header("Index options"),
+      selectInput(
         "fleet_num",
         "Fleet Number",
-        value = 1,
-        min = 1,
-        step = 1
+        choice = NULL
       ),
       numericInput(
         "index_rp",
-        "Index Reference Point",
+        "Depletion Reference Point",
         value = 0.25,
         min = 0,
         max = 1,
         step = 0.05
       ),
       actionButton(
-        "run_analysis",
-        "Run Analysis",
+        "run_analysis_index",
+        "Run Index Analysis",
         class = "btn-primary",
         width = "100%"
       )
     ),
     card(
-      card_header("Parameters"),
-      numericInput(
-        "fleet_num",
-        "Fleet Number",
-        value = 1,
-        min = 1,
-        step = 1
+      card_header("Mean length options"),
+      selectInput(
+        "fleet_num_mtl",
+        "Fleet Name",
+        choice = NULL
+      ),
+      selectInput(
+        "sex_num",
+        "Sex option",
+        choice = NULL
       ),
       numericInput(
-        "index_rp",
-        "Index Reference Point",
+        "mlt_rp",
+        "Depletion Reference Point",
         value = 0.25,
         min = 0,
         max = 1,
         step = 0.05
       ),
       actionButton(
-        "run_analysis",
-        "Run Analysis",
+        "run_analysis_mtl",
+        "Run Length Analysis",
         class = "btn-primary",
         width = "100%"
       )
