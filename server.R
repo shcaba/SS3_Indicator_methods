@@ -3,6 +3,7 @@ library(bslib)
 library(ggplot2)
 library(r4ss)
 library(reshape2)
+library(plotly)
 
 # Define the Index.method function
 Index.method <- function(spp.out, fleet.in, Index.RP = 0.25) {
@@ -87,7 +88,7 @@ Index.method <- function(spp.out, fleet.in, Index.RP = 0.25) {
 MeanLt.method <- function(spp.out, fleet.in, Sex = 1, Ltm.RP = 0.25) {
   spp.out.Ltm <- subset(
     spp.out$len_comp_fit_table,
-    Fleet == fleet.in & Sexes == Sex
+    Fleet_Name == fleet.in & Sexes == Sex
   )
   spp.out.Ltm <- spp.out.Ltm[, c(
     'Yr',
@@ -112,8 +113,9 @@ MeanLt.method <- function(spp.out, fleet.in, Sex = 1, Ltm.RP = 0.25) {
 
   lm.meanlt.plot <- ggplot(spp.out.Ltm.dep, aes(Mean_Lt, Deplete)) +
     geom_point() +
-    geom_smooth(formula = y ~ x + 0, method = "lm")
-  print(lm.meanlt.plot)
+    geom_smooth(formula = y ~ x + 0, method = "lm") +
+    theme_minimal()
+  #print(lm.meanlt.plot)
 
   spp.mlt.lm.out <- lm(Deplete ~ Mean_Lt + 0, data = spp.out.Ltm.dep)
 
@@ -131,14 +133,21 @@ MeanLt.method <- function(spp.out, fleet.in, Sex = 1, Ltm.RP = 0.25) {
     ylim(
       0,
       max(spp.out.Ltm.dep$Lt95, 0.9 / spp.mlt.lm.out$coefficients[1])
-    )
-  print(MeanLt.plot)
-  return(spp.out.Ltm.dep)
+    ) +
+    theme_minimal()
+
+  return(list(
+    data = spp.out.Ltm.dep,
+    lm_plot = lm.meanlt.plot,
+    mlt_plot = MeanLt.plot,
+    lm_model = spp.mlt.lm.out
+  ))
 }
 ##########################################
 ##########################################
 
 server <- function(input, output, session) {
+  options(shiny.maxRequestSize = 30 * 1024^2) #increase max size of upload file
   # Reactive value to store loaded data
   spp_data <- reactiveVal(NULL)
 
@@ -184,41 +193,7 @@ server <- function(input, output, session) {
     )
   })
 
-  #Fleet names and sex for mean length
-
-  fleet.name2 <- reactive({
-    unique(spp_data()$len_comp_fit_table$Fleet_name)
-  })
-
-  observe({
-    updateSelectInput(
-      session,
-      "fleet_num_mtl",
-      label = "Fleet Name",
-      choices = fleet.name2()
-    )
-  })
-
-  sex.mtl <- reactive({
-    if (!is.null(spp_data())) {
-      Lts.fleet <- subset(
-        spp_data()$len_comp_fit_table,
-        Fleet_Name == input$fleet_num_mtl
-      )
-      unique(Lts.fleet$Sexes)
-    }
-  })
-
-  observe({
-    updateSelectInput(
-      session,
-      "sex_num",
-      label = "Sex option",
-      choices = sex.mtl()
-    )
-  })
-
-  # Run analysis when button is clicked
+  # Run INDEX analysis when button is clicked
   analysis_results <- eventReactive(input$run_analysis_index, {
     req(spp_data())
 
@@ -226,8 +201,8 @@ server <- function(input, output, session) {
       {
         Index.method(
           spp.out = spp_data(),
-          fleet.in = fleet.name1$Fleet.number[
-            fleet.name1$Fleet.name == input$fleet_num
+          fleet.in = fleet.name1()$Fleet.number[
+            fleet.name1()$Fleet.name == input$fleet_num
           ],
           Index.RP = input$index_rp
         )
@@ -243,15 +218,15 @@ server <- function(input, output, session) {
   })
 
   # Output: LM Plot
-  output$lm_plot <- renderPlot({
+  output$lm_plot <- renderPlotly({
     req(analysis_results())
-    analysis_results()$lm_plot
+    ggplotly(analysis_results()$lm_plot)
   })
 
   # Output: Index Plot
-  output$index_plot <- renderPlot({
+  output$index_plot <- renderPlotly({
     req(analysis_results())
-    analysis_results()$index_plot
+    ggplotly(analysis_results()$index_plot)
   })
 
   # Output: Data Table
@@ -269,5 +244,102 @@ server <- function(input, output, session) {
   output$model_summary <- renderPrint({
     req(analysis_results())
     summary(analysis_results()$lm_model)
+  })
+
+  #############################
+  ### Mean Length Indicator ###
+  #############################
+  #Fleet names and sex for mean length
+
+  fleet.name2 <- reactive({
+    unique(spp_data()$len_comp_fit_table$Fleet_Name)
+  })
+
+  observe({
+    updateSelectInput(
+      session,
+      "fleet_num_mlt",
+      label = "Fleet Name",
+      choices = fleet.name2(),
+      selected = fleet.name2()[1]
+    )
+  })
+
+  sex.mlt <- reactive({
+    #browser()
+    if (!is.null(spp_data())) {
+      Lts.fleet <- subset(
+        spp_data()$len_comp_fit_table,
+        Fleet_Name == input$fleet_num_mlt
+      )
+      return(unique(Lts.fleet$Sexes))
+    }
+    #if (exists("Lts.fleet")) {
+    #if (is.null(input$fleet_num_mlt)) {
+    #   Lts.fleet = 0
+    #  }
+    #}
+  })
+
+  observe({
+    updateSelectInput(
+      session,
+      "sex_num",
+      label = "Sex option",
+      choices = sex.mlt(),
+      selected = sex.mlt()[1]
+    )
+  })
+
+  # Run Mean Length analysis when button is clicked
+  analysis_results_mlt <- eventReactive(input$run_analysis_mlt, {
+    req(spp_data())
+
+    tryCatch(
+      {
+        MeanLt.method(
+          spp_data(),
+          fleet.in = input$fleet_num_mlt,
+          Sex = as.numeric(input$sex_num),
+          Ltm.RP = input$mlt_rp
+        )
+      },
+      error = function(e) {
+        showNotification(
+          paste("Error running analysis:", e$message),
+          type = "error"
+        )
+        NULL
+      }
+    )
+  })
+
+  # Output: LM Plot
+  output$lm_plot_mlt <- renderPlotly({
+    req(analysis_results_mlt())
+    ggplotly(analysis_results_mlt()$lm_plot)
+  })
+
+  # Output: Mean Length Plot
+  output$mlt_plot <- renderPlotly({
+    req(analysis_results_mlt())
+    ggplotly(analysis_results_mlt()$mlt_plot)
+  })
+
+  # Output: Data Table
+  output$data_table_mlt <- renderTable(
+    {
+      req(analysis_results_mlt())
+      analysis_results_mlt()$data
+    },
+    striped = TRUE,
+    hover = TRUE,
+    bordered = TRUE
+  )
+
+  # Output: Model Summary
+  output$model_summary_mlt <- renderPrint({
+    req(analysis_results_mlt())
+    summary(analysis_results_mlt()$lm_model)
   })
 }
