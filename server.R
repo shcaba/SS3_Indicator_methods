@@ -28,19 +28,24 @@ Index.method <- function(spp.out, fleet.in, Index.RP = 0.25) {
     geom_smooth(
       formula = y ~ x + 0,
       method = "lm",
+      weight = "CV",
       color = "#3498DB",
       fill = "#3498DB",
       alpha = 0.2
     ) +
     labs(
-      title = "Depletion vs Index",
+      title = "Index vs Depletion",
       x = "Index",
       y = "Depletion"
     ) +
     theme_minimal() +
     theme(plot.title = element_text(hjust = 0.5, face = "bold"))
 
-  spp.lm.out <- lm(Deplete ~ Index + 0, data = spp.out.cpue.dep)
+  spp.lm.out <- lm(
+    Deplete ~ Index + 0,
+    data = spp.out.cpue.dep,
+    weights = spp.out.cpue.dep$CV
+  )
 
   Index.plot <- ggplot(spp.out.cpue.dep, aes(Yr, Index)) +
     geom_point(size = 3, color = "#2C3E50") +
@@ -62,7 +67,8 @@ Index.method <- function(spp.out, fleet.in, Index.RP = 0.25) {
       0,
       max(
         spp.out.cpue.dep$Index +
-          (spp.out.cpue.dep$Index * spp.out.cpue.dep$CV * 1.96)
+          (spp.out.cpue.dep$Index * spp.out.cpue.dep$CV * 1.96),
+        Index.RP / spp.lm.out$coefficients[1]
       )
     ) +
     labs(
@@ -77,7 +83,8 @@ Index.method <- function(spp.out, fleet.in, Index.RP = 0.25) {
     data = spp.out.cpue.dep,
     lm_plot = lm.plot,
     index_plot = Index.plot,
-    lm_model = spp.lm.out
+    lm_model = spp.lm.out,
+    RP.out = Index.RP / spp.lm.out$coefficients[1]
   ))
 }
 ################################
@@ -107,32 +114,47 @@ MeanLt.method <- function(spp.out, fleet.in, Sex = 1, Ltm.RP = 0.25) {
     spp.out.dep,
     spp.out.Ltm$All_obs_mean,
     spp.out.Ltm$'All_exp_5%',
-    spp.out.Ltm$'All_exp_95%'
+    spp.out.Ltm$'All_exp_95%',
+    ((spp.out.Ltm$'All_exp_95%' - spp.out.Ltm$'All_exp_5%') / (2 * 1.96)) /
+      spp.out.Ltm$All_obs_mean
   )
-  colnames(spp.out.Ltm.dep)[3:5] <- c("Mean_Lt", "Lt5", "Lt95")
+  colnames(spp.out.Ltm.dep)[3:6] <- c("Mean_Lt", "Lt5", "Lt95", "CV")
 
   lm.meanlt.plot <- ggplot(spp.out.Ltm.dep, aes(Mean_Lt, Deplete)) +
-    geom_point() +
-    geom_smooth(formula = y ~ x + 0, method = "lm") +
+    geom_point(size = 3, color = "#06880c") +
+    geom_smooth(
+      formula = y ~ x + 0,
+      method = "lm",
+      weight = "CV",
+      color = "#1ef368",
+      fill = "#1ef368",
+      alpha = 0.2
+    ) +
     theme_minimal()
   #print(lm.meanlt.plot)
 
-  spp.mlt.lm.out <- lm(Deplete ~ Mean_Lt + 0, data = spp.out.Ltm.dep)
+  spp.mlt.lm.out <- lm(
+    Deplete ~ Mean_Lt + 0,
+    data = spp.out.Ltm.dep,
+    weights = spp.out.Ltm.dep$CV
+  )
 
   MeanLt.plot <- ggplot(spp.out.Ltm.dep, aes(Yr, Mean_Lt)) +
-    geom_point() +
+    geom_point(size = 2, color = "#2C3E50") +
     geom_errorbar(
-      ymin = spp.out.Ltm.dep$Lt5,
-      ymax = spp.out.Ltm.dep$Lt95,
-      width = 0.2
+      aes(ymin = spp.out.Ltm.dep$Lt5, ymax = spp.out.Ltm.dep$Lt95),
+      width = 0.2,
+      color = "#34495E"
     ) +
     geom_hline(
       yintercept = Ltm.RP / spp.mlt.lm.out$coefficients[1],
-      col = "red"
+      col = "#E74C3C",
+      linetype = "dashed",
+      linewidth = 1
     ) +
     ylim(
       0,
-      max(spp.out.Ltm.dep$Lt95, 0.9 / spp.mlt.lm.out$coefficients[1])
+      max(spp.out.Ltm.dep$Lt95, Ltm.RP / spp.mlt.lm.out$coefficients[1])
     ) +
     theme_minimal()
 
@@ -140,7 +162,8 @@ MeanLt.method <- function(spp.out, fleet.in, Sex = 1, Ltm.RP = 0.25) {
     data = spp.out.Ltm.dep,
     lm_plot = lm.meanlt.plot,
     mlt_plot = MeanLt.plot,
-    lm_model = spp.mlt.lm.out
+    lm_model = spp.mlt.lm.out,
+    RP.out = Ltm.RP / spp.mlt.lm.out$coefficients[1]
   ))
 }
 ##########################################
@@ -194,27 +217,29 @@ server <- function(input, output, session) {
   })
 
   # Run INDEX analysis when button is clicked
-  analysis_results <- eventReactive(input$run_analysis_index, {
-    req(spp_data())
+  withProgress(message = 'Calculating indicators', value = 0, {
+    analysis_results <- eventReactive(input$run_analysis_index, {
+      req(spp_data())
 
-    tryCatch(
-      {
-        Index.method(
-          spp.out = spp_data(),
-          fleet.in = fleet.name1()$Fleet.number[
-            fleet.name1()$Fleet.name == input$fleet_num
-          ],
-          Index.RP = input$index_rp
-        )
-      },
-      error = function(e) {
-        showNotification(
-          paste("Error running analysis:", e$message),
-          type = "error"
-        )
-        NULL
-      }
-    )
+      tryCatch(
+        {
+          Index.method(
+            spp.out = spp_data(),
+            fleet.in = fleet.name1()$Fleet.number[
+              fleet.name1()$Fleet.name == input$fleet_num
+            ],
+            Index.RP = input$index_rp
+          )
+        },
+        error = function(e) {
+          showNotification(
+            paste("Error running analysis:", e$message),
+            type = "error"
+          )
+          NULL
+        }
+      )
+    })
   })
 
   # Output: LM Plot
@@ -292,26 +317,28 @@ server <- function(input, output, session) {
   })
 
   # Run Mean Length analysis when button is clicked
-  analysis_results_mlt <- eventReactive(input$run_analysis_mlt, {
-    req(spp_data())
+  withProgress(message = 'Calculating length indicators', value = 0, {
+    analysis_results_mlt <- eventReactive(input$run_analysis_mlt, {
+      req(spp_data())
 
-    tryCatch(
-      {
-        MeanLt.method(
-          spp_data(),
-          fleet.in = input$fleet_num_mlt,
-          Sex = as.numeric(input$sex_num),
-          Ltm.RP = input$mlt_rp
-        )
-      },
-      error = function(e) {
-        showNotification(
-          paste("Error running analysis:", e$message),
-          type = "error"
-        )
-        NULL
-      }
-    )
+      tryCatch(
+        {
+          MeanLt.method(
+            spp_data(),
+            fleet.in = input$fleet_num_mlt,
+            Sex = as.numeric(input$sex_num),
+            Ltm.RP = input$mlt_rp
+          )
+        },
+        error = function(e) {
+          showNotification(
+            paste("Error running analysis:", e$message),
+            type = "error"
+          )
+          NULL
+        }
+      )
+    })
   })
 
   # Output: LM Plot

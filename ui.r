@@ -96,7 +96,7 @@ ui <- page_sidebar(
         ),
         card(
           full_screen = TRUE,
-          card_header("Analysis Results"),
+          card_header("Data table"),
           tableOutput("data_table")
         ),
         card(
@@ -123,7 +123,7 @@ ui <- page_sidebar(
         ),
         card(
           full_screen = TRUE,
-          card_header("Analysis Results"),
+          card_header("Data Table"),
           tableOutput("data_table_mlt")
         ),
         card(
