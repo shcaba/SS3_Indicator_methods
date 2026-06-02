@@ -220,7 +220,11 @@ server <- function(input, output, session) {
         obj_name <- ls(env)[1]
         spp_data(env[[obj_name]])
 
-        showNotification("Data loaded successfully!", type = "message")
+        showNotification(
+          "Data loaded successfully!",
+          type = "message",
+          duration = 1.5
+        )
       },
       error = function(e) {
         showNotification(
@@ -249,10 +253,9 @@ server <- function(input, output, session) {
   })
 
   # Run INDEX analysis when button is clicked
-  withProgress(message = 'Calculating indicators', value = 0, {
-    analysis_results <- eventReactive(input$run_analysis_index, {
-      req(spp_data())
-
+  analysis_results <- eventReactive(input$run_analysis_index, {
+    req(spp_data())
+    withProgress(message = 'Calculating indicators', value = 0, {
       tryCatch(
         {
           Index.method(
@@ -300,7 +303,10 @@ server <- function(input, output, session) {
   # Output: Model Summary
   output$model_summary <- renderPrint({
     req(analysis_results())
-    summary(analysis_results()$lm_model)
+    list(
+      Model_summary = summary(analysis_results()$lm_model),
+      Index_RP = input$index_rp / analysis_results()$lm_model$coefficients[1]
+    )
   })
 
   #############################
@@ -352,24 +358,25 @@ server <- function(input, output, session) {
   withProgress(message = 'Calculating length indicators', value = 0, {
     analysis_results_mlt <- eventReactive(input$run_analysis_mlt, {
       req(spp_data())
-
-      tryCatch(
-        {
-          MeanLt.method(
-            spp_data(),
-            fleet.in = input$fleet_num_mlt,
-            Sex = as.numeric(input$sex_num),
-            Ltm.RP = input$mlt_rp
-          )
-        },
-        error = function(e) {
-          showNotification(
-            paste("Error running analysis:", e$message),
-            type = "error"
-          )
-          NULL
-        }
-      )
+      withProgress(message = 'Calculating indicators', value = 0, {
+        tryCatch(
+          {
+            MeanLt.method(
+              spp_data(),
+              fleet.in = input$fleet_num_mlt,
+              Sex = as.numeric(input$sex_num),
+              Ltm.RP = input$mlt_rp
+            )
+          },
+          error = function(e) {
+            showNotification(
+              paste("Error running analysis:", e$message),
+              type = "error"
+            )
+            NULL
+          }
+        )
+      })
     })
   })
 
@@ -399,6 +406,9 @@ server <- function(input, output, session) {
   # Output: Model Summary
   output$model_summary_mlt <- renderPrint({
     req(analysis_results_mlt())
-    summary(analysis_results_mlt()$lm_model)
+    list(
+      Model_summary = summary(analysis_results_mlt()$lm_model),
+      Index_RP = input$mlt_rp / analysis_results()$lm_model$coefficients[1]
+    )
   })
 }

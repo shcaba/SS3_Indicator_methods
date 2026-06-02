@@ -91,7 +91,9 @@ ui <- page_sidebar(
         ),
         card(
           full_screen = TRUE,
-          card_header("Index Time Series"),
+          card_header(
+            "Index indicator time series. Horizontal line is the index value at the specified depletion reference point."
+          ),
           plotlyOutput("index_plot")
         ),
         card(
@@ -107,7 +109,7 @@ ui <- page_sidebar(
       )
     ),
     nav_panel(
-      title = "Mean Length Indicator",
+      title = "Mean Length Indicator Method",
       value = "tab2",
       layout_columns(
         col_widths = c(6, 6, 6, 6),
@@ -118,7 +120,9 @@ ui <- page_sidebar(
         ),
         card(
           full_screen = TRUE,
-          card_header("Mean Length Time Series"),
+          card_header(
+            "Mean length time series. Horizontal line is the mean length value at the specified depletion reference point."
+          ),
           plotlyOutput("mlt_plot", height = "500px")
         ),
         card(
