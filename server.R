@@ -15,12 +15,17 @@ Index.method <- function(spp.out, fleet.in, Index.RP = 0.25) {
     c('Yr', 'Deplete')
   ]
 
+  RP.test <- spp.out.dep$Deplete <= Index.RP
+  RP.test[RP.test == "TRUE"] <- "BELOW RP"
+  RP.test[RP.test == "FALSE"] <- "ABOVE RP"
+
   spp.out.cpue.dep <- cbind(
     spp.out.dep,
     spp.out.cpue.survey$Obs,
-    spp.out.cpue.survey$SE_input
+    spp.out.cpue.survey$SE_input,
+    RP.test
   )
-  colnames(spp.out.cpue.dep)[3:4] <- c("Index", "CV")
+  colnames(spp.out.cpue.dep)[3:5] <- c("Index", "CV", "RP.test")
 
   # Create plots
   lm.plot <- ggplot(spp.out.cpue.dep, aes(Index, Deplete)) +
@@ -47,15 +52,27 @@ Index.method <- function(spp.out, fleet.in, Index.RP = 0.25) {
     weights = spp.out.cpue.dep$CV
   )
 
-  Index.plot <- ggplot(spp.out.cpue.dep, aes(Yr, Index)) +
-    geom_point(size = 3, color = "#2C3E50") +
+  Index.plot <- ggplot(data = spp.out.cpue.dep) +
     geom_errorbar(
       aes(
+        Yr,
         ymin = Index - (Index * CV * 1.96),
-        ymax = Index + (Index * CV * 1.96)
+        ymax = Index + (Index * CV * 1.96),
+        color = RP.test
       ),
-      width = 0.2,
-      color = "#34495E"
+      width = 0.2
+    ) +
+    geom_point(
+      #data = spp.out.cpue.dep,
+      aes(Yr, Index, color = RP.test),
+      size = 3
+    ) +
+    scale_color_manual(
+      name = "RP.test",
+      values = c(
+        "BELOW RP" = "darkred",
+        "ABOVE RP" = "green"
+      )
     ) +
     geom_hline(
       yintercept = Index.RP / spp.lm.out$coefficients[1],
@@ -77,7 +94,10 @@ Index.method <- function(spp.out, fleet.in, Index.RP = 0.25) {
       y = "Index"
     ) +
     theme_minimal() +
-    theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+    theme(
+      plot.title = element_text(hjust = 0.5, face = "bold"),
+      legend.position = "none"
+    )
 
   return(list(
     data = spp.out.cpue.dep,
@@ -110,15 +130,20 @@ MeanLt.method <- function(spp.out, fleet.in, Sex = 1, Ltm.RP = 0.25) {
     c('Yr', 'Deplete')
   ]
 
+  RP.test <- spp.out.dep$Deplete <= Ltm.RP
+  RP.test[RP.test == "TRUE"] <- "BELOW RP"
+  RP.test[RP.test == "FALSE"] <- "ABOVE RP"
+
   spp.out.Ltm.dep <- cbind(
     spp.out.dep,
     spp.out.Ltm$All_obs_mean,
     spp.out.Ltm$'All_exp_5%',
     spp.out.Ltm$'All_exp_95%',
     ((spp.out.Ltm$'All_exp_95%' - spp.out.Ltm$'All_exp_5%') / (2 * 1.96)) /
-      spp.out.Ltm$All_obs_mean
+      spp.out.Ltm$All_obs_mean,
+    RP.test
   )
-  colnames(spp.out.Ltm.dep)[3:6] <- c("Mean_Lt", "Lt5", "Lt95", "CV")
+  colnames(spp.out.Ltm.dep)[3:7] <- c("Mean_Lt", "Lt5", "Lt95", "CV", "RP.test")
 
   lm.meanlt.plot <- ggplot(spp.out.Ltm.dep, aes(Mean_Lt, Deplete)) +
     geom_point(size = 3, color = "#06880c") +
@@ -139,12 +164,18 @@ MeanLt.method <- function(spp.out, fleet.in, Sex = 1, Ltm.RP = 0.25) {
     weights = spp.out.Ltm.dep$CV
   )
 
-  MeanLt.plot <- ggplot(spp.out.Ltm.dep, aes(Yr, Mean_Lt)) +
-    geom_point(size = 2, color = "#2C3E50") +
+  MeanLt.plot <- ggplot(data = spp.out.Ltm.dep) +
     geom_errorbar(
-      aes(ymin = spp.out.Ltm.dep$Lt5, ymax = spp.out.Ltm.dep$Lt95),
-      width = 0.2,
-      color = "#34495E"
+      aes(Yr, ymin = Lt5, ymax = Lt95, color = RP.test),
+      width = 0.2
+    ) +
+    geom_point(aes(Yr, Mean_Lt, color = RP.test), size = 2) +
+    scale_color_manual(
+      name = "RP.test",
+      values = c(
+        "BELOW RP" = "darkred",
+        "ABOVE RP" = "green"
+      )
     ) +
     geom_hline(
       yintercept = Ltm.RP / spp.mlt.lm.out$coefficients[1],
@@ -156,7 +187,8 @@ MeanLt.method <- function(spp.out, fleet.in, Sex = 1, Ltm.RP = 0.25) {
       0,
       max(spp.out.Ltm.dep$Lt95, Ltm.RP / spp.mlt.lm.out$coefficients[1])
     ) +
-    theme_minimal()
+    theme_minimal() +
+    theme(legend.position = "none")
 
   return(list(
     data = spp.out.Ltm.dep,
