@@ -4,16 +4,29 @@ library(ggplot2)
 library(r4ss)
 library(reshape2)
 library(plotly)
+library(stringr)
 
 # Define the Index.method function
 Index.method <- function(spp.out, fleet.in, Index.RP = 0.25) {
   spp.out.cpue.survey <- subset(spp.out$cpue, Fleet == fleet.in)
   spp.out.cpue.survey <- spp.out.cpue.survey[, c('Yr', 'Obs', 'SE_input')]
 
-  spp.out.dep <- spp.out$sprseries[
-    spp.out$sprseries$Yr %in% unique(spp.out.cpue.survey$Yr),
-    c('Yr', 'Deplete')
+  #Extract depletion
+  bratio <- spp.out$derived_quants[
+    grep("Bratio_", spp.out$derived_quants$Label),
   ]
+  spp.out.dep <- data.frame(
+    Yr = as.numeric(str_split_i(bratio$Label, "_", 2)),
+    Deplete = bratio$Value
+  )
+
+  spp.out.dep <- spp.out.dep[
+    spp.out.dep$Yr %in% unique(spp.out.cpue.survey$Yr),
+  ]
+  #spp.out.dep <- spp.out$sprseries[
+  #  spp.out$sprseries$Yr %in% unique(spp.out.cpue.survey$Yr),
+  #  c('Yr', 'Deplete')
+  #]
 
   RP.test <- spp.out.dep$Deplete <= Index.RP
   RP.test[RP.test == "TRUE"] <- "BELOW RP"
@@ -125,9 +138,17 @@ MeanLt.method <- function(spp.out, fleet.in, Sex = 1, Ltm.RP = 0.25) {
     'Sexes'
   )]
 
-  spp.out.dep <- spp.out$sprseries[
-    spp.out$sprseries$Yr %in% spp.out.Ltm$Yr,
-    c('Yr', 'Deplete')
+  #Extract depletion
+  bratio <- spp.out$derived_quants[
+    grep("Bratio_", spp.out$derived_quants$Label),
+  ]
+  spp.out.dep <- data.frame(
+    Yr = as.numeric(str_split_i(bratio$Label, "_", 2)),
+    Deplete = bratio$Value
+  )
+
+  spp.out.dep <- spp.out.dep[
+    spp.out.dep$Yr %in% unique(spp.out.Ltm$Yr),
   ]
 
   RP.test <- spp.out.dep$Deplete <= Ltm.RP
@@ -148,7 +169,7 @@ MeanLt.method <- function(spp.out, fleet.in, Sex = 1, Ltm.RP = 0.25) {
   lm.meanlt.plot <- ggplot(spp.out.Ltm.dep, aes(Mean_Lt, Deplete)) +
     geom_point(size = 3, color = "#06880c") +
     geom_smooth(
-      formula = y ~ x + 0,
+      formula = y ~ x,
       method = "lm",
       weight = "CV",
       color = "#1ef368",
@@ -159,7 +180,7 @@ MeanLt.method <- function(spp.out, fleet.in, Sex = 1, Ltm.RP = 0.25) {
   #print(lm.meanlt.plot)
 
   spp.mlt.lm.out <- lm(
-    Deplete ~ Mean_Lt + 0,
+    Deplete ~ Mean_Lt,
     data = spp.out.Ltm.dep,
     weights = spp.out.Ltm.dep$CV
   )
@@ -178,14 +199,19 @@ MeanLt.method <- function(spp.out, fleet.in, Sex = 1, Ltm.RP = 0.25) {
       )
     ) +
     geom_hline(
-      yintercept = Ltm.RP / spp.mlt.lm.out$coefficients[1],
+      yintercept = (Ltm.RP - spp.mlt.lm.out$coefficients[1]) /
+        spp.mlt.lm.out$coefficients[2],
       col = "#E74C3C",
       linetype = "dashed",
       linewidth = 1
     ) +
     ylim(
       0,
-      max(spp.out.Ltm.dep$Lt95, Ltm.RP / spp.mlt.lm.out$coefficients[1])
+      max(
+        spp.out.Ltm.dep$Lt95,
+        (Ltm.RP - spp.mlt.lm.out$coefficients[1]) /
+          spp.mlt.lm.out$coefficients[2]
+      )
     ) +
     theme_minimal() +
     theme(legend.position = "none")
@@ -195,7 +221,8 @@ MeanLt.method <- function(spp.out, fleet.in, Sex = 1, Ltm.RP = 0.25) {
     lm_plot = lm.meanlt.plot,
     mlt_plot = MeanLt.plot,
     lm_model = spp.mlt.lm.out,
-    RP.out = Ltm.RP / spp.mlt.lm.out$coefficients[1]
+    RP.out = (Ltm.RP - spp.mlt.lm.out$coefficients[1]) /
+      spp.mlt.lm.out$coefficients[2]
   ))
 }
 ##########################################
@@ -408,7 +435,9 @@ server <- function(input, output, session) {
     req(analysis_results_mlt())
     list(
       Model_summary = summary(analysis_results_mlt()$lm_model),
-      Index_RP = input$mlt_rp / analysis_results()$lm_model$coefficients[1]
+      Index_RP = (input$mlt_rp -
+        analysis_results_mlt()$lm_model$coefficients[1]) /
+        analysis_results_mlt()$lm_model$coefficients[2]
     )
   })
 }
