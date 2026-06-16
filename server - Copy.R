@@ -139,140 +139,49 @@ MeanLt.method <- function(
     fleet == fleet.in & sex == Sex & part == Part.in
   )
 
-  Lt.vec <- data.in$lbin_vector
-  Lt.dat <- data.out.Ltm[, -c(1:6)]
-  Lt.dat.F <- Lt.dat[, 1:data.in$N_lbins]
-  Lt.dat.M <- Lt.dat[, (data.in$N_lbins + 1):ncol(Lt.dat)]
+  Lt.vec <- data.out.Ltm$lbin_vector
+  Lt.dat <- data.out.Ltm$lencomp[, -c(1:6)]
+  Lt.dat.F <- Lt.dat[, 1:data.out.Ltm$N_lbins]
+  Lt.dat.M <- Lt.dat[, (data.out.Ltm$N_lbins + 1):ncol(Lt.dat)]
 
-  if (Sex == 0 | Sex == 1) {
-    cdf <- mapply(
+  if (Sex = 0 | 1) {
+    Lt.qtls <- mapply(
       function(x) {
-        cumsum(as.numeric(Lt.dat.F[x, ]) / sum(as.numeric(Lt.dat.F[x, ])))
+        quantile(
+          vec_rep_each(Lt.vec, as.numeric(round(Lt.dat.F[x, ] * 10000000))),
+          probs = c(0.05, 0.25, 0.5, 0.75, 0.95)
+        )
       },
       x = 1:nrow(Lt.dat.F),
-      SIMPLIFY = FALSE
-    )
-    Lt.qtls.05 <- mapply(
-      function(x) Lt.vec[min(which(cdf[[x]] >= 0.05))],
-      x = 1:length(cdf),
       SIMPLIFY = TRUE
     )
-    Lt.qtls.25 <- mapply(
-      function(x) Lt.vec[min(which(cdf[[x]] >= 0.25))],
-      x = 1:length(cdf),
-      SIMPLIFY = TRUE
-    )
-    Lt.qtls.5 <- mapply(
-      function(x) Lt.vec[min(which(cdf[[x]] >= 0.5))],
-      x = 1:length(cdf),
-      SIMPLIFY = TRUE
-    )
-    Lt.qtls.75 <- mapply(
-      function(x) Lt.vec[min(which(cdf[[x]] >= 0.75))],
-      x = 1:length(cdf),
-      SIMPLIFY = TRUE
-    )
-    Lt.qtls.95 <- mapply(
-      function(x) Lt.vec[min(which(cdf[[x]] >= 0.95))],
-      x = 1:length(cdf),
-      SIMPLIFY = TRUE
-    )
-
-    Lt.mean <- mapply(
-      function(x) sum(Lt.dat.F[x, ] * Lt.vec) / sum(Lt.dat.F[x, ]),
-      x = 1:nrow(Lt.dat.F),
-      SIMPLIFY = TRUE
-    )
+    Lt.mean <- sum(Lt.dat.F[1, ] * Lt.vec) / sum(Lt.dat.F[1, ])
   }
-  if (Sex == 2) {
-    cdf <- mapply(
+  if (Sex = 2) {
+    Lt.qtls <- mapply(
       function(x) {
-        cumsum(as.numeric(Lt.dat.M[x, ]) / sum(as.numeric(Lt.dat.M[x, ])))
+        quantile(
+          vec_rep_each(Lt.vec, as.numeric(round(Lt.dat.M[x, ] * 10000000))),
+          probs = c(0.05, 0.25, 0.5, 0.75, 0.95)
+        )
       },
-      x = 1:nrow(Lt.dat.M),
-      SIMPLIFY = FALSE
-    )
-    Lt.qtls.05 <- mapply(
-      function(x) Lt.vec[min(which(cdf[[x]] >= 0.05))],
-      x = 1:length(cdf),
-      SIMPLIFY = TRUE
-    )
-    Lt.qtls.25 <- mapply(
-      function(x) Lt.vec[min(which(cdf[[x]] >= 0.25))],
-      x = 1:length(cdf),
-      SIMPLIFY = TRUE
-    )
-    Lt.qtls.5 <- mapply(
-      function(x) Lt.vec[min(which(cdf[[x]] >= 0.5))],
-      x = 1:length(cdf),
-      SIMPLIFY = TRUE
-    )
-    Lt.qtls.75 <- mapply(
-      function(x) Lt.vec[min(which(cdf[[x]] >= 0.75))],
-      x = 1:length(cdf),
-      SIMPLIFY = TRUE
-    )
-    Lt.qtls.95 <- mapply(
-      function(x) Lt.vec[min(which(cdf[[x]] >= 0.95))],
-      x = 1:length(cdf),
-      SIMPLIFY = TRUE
-    )
-
-    Lt.mean <- mapply(
-      function(x) sum(Lt.dat.M[x, ] * Lt.vec) / sum(Lt.dat.M[x, ]),
       x = 1:nrow(Lt.dat.M),
       SIMPLIFY = TRUE
     )
+    Lt.mean <- sum(Lt.dat.M[1, ] * Lt.vec) / sum(Lt.dat.M[1, ])
   }
-  if (Sex == 3) {
-    Lt.dat.prop <- mapply(
-      function(x) Lt.dat[x, ] / sum(Lt.dat[x, ]),
-      x = 1:nrow(Lt.dat),
-      SIMPLIFY = FALSE
-    )
-    Lt.dat.prop <- do.call(rbind, Lt.dat.prop)
-    Lt.dat1 <- Lt.dat.prop[, 1:data.in$N_lbins]
-    Lt.dat2 <- Lt.dat.prop[, (data.in$N_lbins + 1):ncol(Lt.dat.prop)]
-    Lt.dat3 <- Lt.dat1 + Lt.dat2
-
-    cdf <- mapply(
+  if (Sex = 3) {
+    Lt.qtls <- mapply(
       function(x) {
-        cumsum(as.numeric(Lt.dat3[x, ]) / sum(as.numeric(Lt.dat3[x, ])))
+        quantile(
+          vec_rep_each(Lt.vec, as.numeric(round(Lt.dat[x, ] * 10000000))),
+          probs = c(0.05, 0.25, 0.5, 0.75, 0.95)
+        )
       },
-      x = 1:nrow(Lt.dat3),
-      SIMPLIFY = FALSE
-    )
-    Lt.qtls.05 <- mapply(
-      function(x) Lt.vec[min(which(cdf[[x]] >= 0.05))],
-      x = 1:length(cdf),
-      SIMPLIFY = TRUE
-    )
-    Lt.qtls.25 <- mapply(
-      function(x) Lt.vec[min(which(cdf[[x]] >= 0.25))],
-      x = 1:length(cdf),
-      SIMPLIFY = TRUE
-    )
-    Lt.qtls.5 <- mapply(
-      function(x) Lt.vec[min(which(cdf[[x]] >= 0.5))],
-      x = 1:length(cdf),
-      SIMPLIFY = TRUE
-    )
-    Lt.qtls.75 <- mapply(
-      function(x) Lt.vec[min(which(cdf[[x]] >= 0.75))],
-      x = 1:length(cdf),
-      SIMPLIFY = TRUE
-    )
-    Lt.qtls.95 <- mapply(
-      function(x) Lt.vec[min(which(cdf[[x]] >= 0.95))],
-      x = 1:length(cdf),
-      SIMPLIFY = TRUE
-    )
-
-    Lt.mean <- mapply(
-      function(x) sum(Lt.dat[x, ] * Lt.vec) / sum(Lt.dat[x, ]),
       x = 1:nrow(Lt.dat),
       SIMPLIFY = TRUE
     )
+    Lt.mean <- sum(Lt.dat[1, ] * Lt.vec) / sum(Lt.dat[1, ])
   }
 
   # spp.out.Ltm <- spp.out.Ltm[, c(
@@ -283,39 +192,34 @@ MeanLt.method <- function(
   #   'Sexes'
   # )]
 
-  spp.out.Ltm <- data.frame(
-    Year = data.out.Ltm$year,
-    Neff = data.out.Ltm$Nsamp,
-    Q5 = Lt.qtls.05,
-    Q25 = Lt.qtls.25,
-    Q50 = Lt.qtls.5,
-    Mean = Lt.mean,
-    Q75 = Lt.qtls.75,
-    Q95 = Lt.qtls.95
+  spp.out.Ltm <- cbind(
+    data.out.Ltm$lencomp$year,
+    data.out.Ltm$lencomp$Nsamp,
+    Lt.mean,
+    Lt.qtls
   )
-
-  # colnames(spp.out.Ltm) <- c(
-  #   'Year',
-  #   "Neff",
-  #   "Q5",
-  #   "Q25",
-  #   "Q50",
-  #   "Mean",
-  #   "Q75",
-  #   "Q95"
-  # )
+  colnames(spp.out.Ltm) <- c(
+    'Year',
+    "Neff",
+    "Mean",
+    "Q5",
+    "Q25",
+    "Q50",
+    "Q75",
+    "Q95"
+  )
 
   #Extract depletion
   bratio <- spp.out$derived_quants[
     grep("Bratio_", spp.out$derived_quants$Label),
   ]
   spp.out.dep <- data.frame(
-    Year = as.numeric(str_split_i(bratio$Label, "_", 2)),
+    Yr = as.numeric(str_split_i(bratio$Label, "_", 2)),
     Deplete = bratio$Value
   )
 
   spp.out.dep <- spp.out.dep[
-    spp.out.dep$Year %in% unique(spp.out.Ltm$Year),
+    spp.out.dep$Yr %in% unique(spp.out.Ltm$Year),
   ]
 
   RP.test <- spp.out.dep$Deplete <= Ltm.RP
@@ -338,7 +242,7 @@ MeanLt.method <- function(
     spp.out.Ltm[, -1],
     RP.test
   )
-  colnames(spp.out.Ltm.dep)[ncol(spp.out.Ltm.dep)] <- "RP.test"
+  colnames(spp.out.Ltm.dep)[nol(spp.out.Ltm.dep)] <- "RP.test"
 
   lm.meanlt.plot <- ggplot(spp.out.Ltm.dep, aes(Mean, Deplete)) +
     geom_point(size = 3, color = "#06880c") +
@@ -405,66 +309,64 @@ MeanLt.method <- function(
 server <- function(input, output, session) {
   options(shiny.maxRequestSize = 30 * 1024^2) #increase max size of upload file
   # Reactive value to store loaded data
-  spp_data <- reactiveVal(NULL)
-  datafile <- reactiveVal(NULL)
-  envrep <- new.env()
-  envdat <- new.env()
+  spp_data <- datafile <- reactiveVal(NULL)
 
   # Load RData file
-  observeEvent(input$rmodel_file, {
-    req(input$rmodel_file)
+  # observeEvent(input$rmodel_file, {
+  #   req(input$rmodel_file)
 
-    tryCatch(
-      {
-        # Load the RData file
-        #env.rep <- new.env()
-        spp_data(get(load(input$rmodel_file$datapath)))
-        # Get the first object (assuming it's the r4ss output)
-        # obj_name <- ls(env.rep)[1]
-        #         spp_data<-(env.rep[[obj_name]])
+  #   tryCatch(
+  #     {
+  #       # Load the RData file
+  #       env <- new.env()
+  #       load(input$rmodel_file$datapath, envir = env)
 
-        showNotification(
-          "Model output loaded successfully!",
-          type = "message",
-          duration = 1.5
-        )
-      },
-      error = function(e) {
-        showNotification(
-          paste("Error loading file:", e$message),
-          type = "error"
-        )
-      }
-    )
-  })
+  #       # Get the first object (assuming it's the r4ss output)
+  #       obj_name <- ls(env)[1]
+  #       spp_data(env[[obj_name]])
 
-  observeEvent(input$rdata_file, {
-    req(input$rdata_file)
+  #       showNotification(
+  #         "Model output loaded successfully!",
+  #         type = "message",
+  #         duration = 1.5
+  #       )
+  #     },
+  #     error = function(e) {
+  #       showNotification(
+  #         paste("Error loading file:", e$message),
+  #         type = "error"
+  #       )
+  #     }
+  #   )
+  # })
 
-    tryCatch(
-      {
-        # Load the RData file
-        #env.data <- new.env()
-        datafile(get(load(input$rdata_file$datapath)))
-        return()
-        # Get the first object (assuming it's the r4ss output)
-        #obj_name <- ls(env.data)[1]
-        # datafile(env.data[[obj_name]])
+  # observeEvent(input$rdata_file, {
+  #   req(input$rdata_file)
 
-        showNotification(
-          "Data loaded successfully!",
-          type = "message",
-          duration = 1.5
-        )
-      },
-      error = function(ee) {
-        showNotification(
-          paste("Error loading file:", ee$message),
-          type = "error"
-        )
-      }
-    )
-  })
+  #   tryCatch(
+  #     {
+  #       # Load the RData file
+  #       env2 <- new.env()
+  #       load(input$rdata_file$datapath, envir = env2)
+
+  #       # Get the first object (assuming it's the r4ss output)
+  #       obj_name <- ls(env2)[1]
+  #       datafile(env2[[obj_name]])
+
+  #       showNotification(
+  #         "Data loaded successfully!",
+  #         type = "message",
+  #         duration = 1.5
+  #       )
+  #     },
+  #     error = function(ee) {
+  #       showNotification(
+  #         paste("Error loading file:", ee$message),
+  #         type = "error"
+  #       )
+  #     }
+  #   )
+  # })
 
   #Fleet names and number for indices
   fleet.name1 <- reactive({
@@ -546,21 +448,8 @@ server <- function(input, output, session) {
   #Fleet names and sex for mean length
 
   fleet.name2 <- reactive({
-    req(spp_data(), datafile()$lencomp)
-    #    if (!is.null(spp_data()) & !is.null(datafile())) {
-    datafile <- datafile()
-    names(datafile$lencomp)[1:6] <- c(
-      "year",
-      "month",
-      "fleet",
-      "sex",
-      "part",
-      "Nsamp"
-    )
-
-    datafile$fleetnames[unique(datafile$lencomp$fleet)]
+    datafile()$fleetnames[unique(datafile()$lencomp$FltSvy)]
     #unique(spp_data()$len_comp_fit_table$Fleet_Name)
-    #   }
   })
 
   observe({
@@ -583,57 +472,35 @@ server <- function(input, output, session) {
   # })
 
   sex.mlt <- reactive({
-    req(spp_data(), datafile()$lencomp)
-    #    if (!is.null(spp_data()) & !is.null(datafile())) {
-    datafile <- datafile()
-    names(datafile$lencomp)[1:6] <- c(
-      "year",
-      "month",
-      "fleet",
-      "sex",
-      "part",
-      "Nsamp"
-    )
+    if (!is.null(spp_data()) & !is.null(datafile()$lencomp)) {
+      fleet.name.num <- data.frame(
+        fleetnames = datafile()$fleetnames[unique(datafile()$lencomp$FltSvy)],
+        fleetnumber = unique(datafile()$lencomp$FltSvy)
+      )
 
-    fleet.name.num <- data.frame(
-      fleetnames = datafile$fleetnames[unique(datafile$lencomp$fleet)],
-      fleetnumber = unique(datafile$lencomp$fleet)
-    )
-
-    Lts.fleet <- subset(
-      datafile$lencomp,
-      fleet ==
-        fleet.name.num[fleet.name.num$fleetnames == input$fleet_num_mlt, 2]
-    )
-    return(unique(Lts.fleet$sex))
-    #   }
+      Lts.fleet <- subset(
+        spp_data()$lencomp,
+        FltSvy ==
+          fleet.name.num[fleet.name.num$fleetnames == input$fleet_num_mlt, 2]
+      )
+      return(unique(Lts.fleet$Sex))
+    }
   })
 
   part.mlt <- reactive({
-    req(spp_data(), datafile()$lencomp)
-    #if (!is.null(spp_data()) & !is.null(datafile()$lencomp)) {
-    datafile <- datafile()
-    names(datafile$lencomp)[1:6] <- c(
-      "year",
-      "month",
-      "fleet",
-      "sex",
-      "part",
-      "Nsamp"
-    )
+    if (!is.null(spp_data()) & !is.null(datafile()$lencomp)) {
+      fleet.name.num <- data.frame(
+        fleetnames = datafile()$fleetnames[unique(datafile()$lencomp$FltSvy)],
+        fleetnumber = unique(datafile()$lencomp$FltSvy)
+      )
 
-    fleet.name.num <- data.frame(
-      fleetnames = datafile$fleetnames[unique(datafile$lencomp$fleet)],
-      fleetnumber = unique(datafile$lencomp$fleet)
-    )
-
-    Lts.fleet <- subset(
-      datafile$lencomp,
-      fleet ==
-        fleet.name.num[fleet.name.num$fleetnames == input$fleet_num_mlt, 2]
-    )
-    return(unique(Lts.fleet$part))
-    #}
+      Lts.fleet <- subset(
+        datafile()$lencomp,
+        Fleet_Name ==
+          fleet.name.num[fleet.name.num$fleetnames == input$fleet_num_mlt, 2]
+      )
+      return(unique(Lts.fleet$Part))
+    }
   })
   #if (exists("Lts.fleet")) {
   #if (is.null(input$fleet_num_mlt)) {
@@ -664,34 +531,15 @@ server <- function(input, output, session) {
   # Run Mean Length analysis when button is clicked
   withProgress(message = 'Calculating length indicators', value = 0, {
     analysis_results_mlt <- eventReactive(input$run_analysis_mlt, {
-      req(spp_data(), datafile()$lencomp)
-      datafile <- datafile()
-      names(datafile$lencomp)[1:6] <- c(
-        "year",
-        "month",
-        "fleet",
-        "sex",
-        "part",
-        "Nsamp"
-      )
-
-      fleet.name.num <- data.frame(
-        fleetnames = datafile$fleetnames[unique(datafile$lencomp$fleet)],
-        fleetnumber = unique(datafile$lencomp$fleet)
-      )
-      fleet.num <- fleet.name.num[
-        fleet.name.num$fleetnames == input$fleet_num_mlt,
-        2
-      ]
+      req(spp_data())
       withProgress(message = 'Calculating indicators', value = 0, {
         tryCatch(
           {
             MeanLt.method(
               spp.out = spp_data(),
-              data.in = datafile,
-              fleet.in = fleet.num,
+              data.in = datafile(),
+              fleet.in = input$fleet_num_mlt,
               Sex = as.numeric(input$sex_num),
-              Part.in = as.numeric(input$part_num),
               Ltm.RP = input$mlt_rp
             )
           },

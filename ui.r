@@ -4,19 +4,25 @@ library(ggplot2)
 library(r4ss)
 library(reshape2)
 library(plotly)
+library(vctrs)
 
 ui <- page_sidebar(
   title = "Indicator Analysis",
   sidebar = sidebar(
     card(
-      card_header("Data Input"),
+      card_header("File Inputs"),
       fileInput(
-        "rdata_file",
-        "Upload R data object saved from using the SS_output() for a SS3 model",
-        buttonLabel = "Browse model output file",
+        "rmodel_file",
+        "Upload R report object saved from using the SS_output() for a SS3 model",
+        buttonLabel = "SS3 model output file",
         accept = c(".RData", ".rda", "rds")
       ),
-      #      helpText("Upload an RData file containing r4ss model output")
+      fileInput(
+        "rdata_file",
+        "Upload R datafile object saved from using the SS_readdat() for a SS3 model",
+        buttonLabel = "SS3 data file",
+        accept = c(".RData", ".rda", "rds")
+      ),
     ),
     conditionalPanel(
       condition = "input.tabs == 'tab1'",
@@ -53,14 +59,27 @@ ui <- page_sidebar(
           "Fleet Name",
           choice = NULL
         ),
-        selectInput(
-          "sex_num",
-          "Sex option",
-          choice = NULL
+        fluidRow(
+          column(
+            width = 6,
+            selectInput(
+              "sex_num",
+              "Sex",
+              choice = 0
+            )
+          ),
+          column(
+            width = 6,
+            selectInput(
+              "part_num",
+              "Partition",
+              choice = 0
+            )
+          )
         ),
         numericInput(
           "mlt_rp",
-          "Depletion Reference Point",
+          "Depletion Ref. Pt.",
           value = 0.25,
           min = 0,
           max = 1,
