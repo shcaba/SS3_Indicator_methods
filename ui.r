@@ -17,12 +17,15 @@ ui <- page_sidebar(
         buttonLabel = "SS3 model output file",
         accept = c(".RData", ".rda", "rds")
       ),
-      fileInput(
-        "rdata_file",
-        "Upload R datafile object saved from using the SS_readdat() for a SS3 model",
-        buttonLabel = "SS3 data file",
-        accept = c(".RData", ".rda", "rds")
-      ),
+      conditionalPanel(
+        condition = "input.tabs == 'tab2'",
+        fileInput(
+          "rdata_file",
+          "Upload R datafile object saved from using the SS_readdat() for a SS3 model",
+          buttonLabel = "SS3 data file",
+          accept = c(".RData", ".rda", "rds")
+        ),
+      )
     ),
     conditionalPanel(
       condition = "input.tabs == 'tab1'",
@@ -77,6 +80,9 @@ ui <- page_sidebar(
             )
           )
         ),
+        #fluidRow(
+        # column(
+        width = 6,
         numericInput(
           "mlt_rp",
           "Depletion Ref. Pt.",
@@ -84,6 +90,17 @@ ui <- page_sidebar(
           min = 0,
           max = 1,
           step = 0.05
+          #)
+        ),
+        #column(
+        # width = 6,
+        selectInput(
+          "lt_compare",
+          "Length metric",
+          choices = c("Q5", "Q25", "Q50", "Mean", "Q75", "Q95"),
+          selected = "Mean"
+          #)
+          #)
         ),
         actionButton(
           "run_analysis_mlt",

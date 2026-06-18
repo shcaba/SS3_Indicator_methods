@@ -132,7 +132,8 @@ MeanLt.method <- function(
   fleet.in,
   Sex = 1,
   Part.in = 0,
-  Ltm.RP = 0.25
+  Ltm.RP = 0.25,
+  Lt.metric = "Mean"
 ) {
   data.out.Ltm <- subset(
     data.in$lencomp,
@@ -294,17 +295,6 @@ MeanLt.method <- function(
     Q95 = Lt.qtls.95
   )
 
-  # colnames(spp.out.Ltm) <- c(
-  #   'Year',
-  #   "Neff",
-  #   "Q5",
-  #   "Q25",
-  #   "Q50",
-  #   "Mean",
-  #   "Q75",
-  #   "Q95"
-  # )
-
   #Extract depletion
   bratio <- spp.out$derived_quants[
     grep("Bratio_", spp.out$derived_quants$Label),
@@ -341,7 +331,7 @@ MeanLt.method <- function(
   colnames(spp.out.Ltm.dep)[ncol(spp.out.Ltm.dep)] <- "RP.test"
 
   lm.meanlt.plot <- ggplot(spp.out.Ltm.dep, aes(Mean, Deplete)) +
-    geom_point(size = 3, color = "#06880c") +
+    geom_point(size = 3, color = "#5D9741") +
     geom_smooth(
       formula = y ~ x,
       method = "lm",
@@ -351,20 +341,28 @@ MeanLt.method <- function(
       alpha = 0.2
     ) +
     theme_minimal()
-  #print(lm.meanlt.plot)
 
   spp.mlt.lm.out <- lm(
-    Deplete ~ Mean,
+    Deplete ~ spp.out.Ltm.dep[, 6],
     data = spp.out.Ltm.dep,
     weights = spp.out.Ltm.dep$Neff
   )
+
+  Metric_lt = spp.out.Ltm.dep[, names(spp.out.Ltm.dep) == Lt.metric]
 
   MeanLt.plot <- ggplot(data = spp.out.Ltm.dep) +
     geom_errorbar(
       aes(Year, ymin = Q5, ymax = Q95, color = RP.test),
       width = 0.2
     ) +
-    geom_point(aes(Year, Mean, color = RP.test), size = 2) +
+    geom_point(
+      aes(
+        Year,
+        Metric_lt,
+        color = RP.test
+      ),
+      size = 2
+    ) +
     scale_color_manual(
       name = "RP.test",
       values = c(
@@ -387,6 +385,7 @@ MeanLt.method <- function(
           spp.mlt.lm.out$coefficients[2]
       )
     ) +
+    ylab(Lt.metric) +
     theme_minimal() +
     theme(legend.position = "none")
 
@@ -407,8 +406,8 @@ server <- function(input, output, session) {
   # Reactive value to store loaded data
   spp_data <- reactiveVal(NULL)
   datafile <- reactiveVal(NULL)
-  envrep <- new.env()
-  envdat <- new.env()
+  #envrep <- new.env()
+  #envdat <- new.env()
 
   # Load RData file
   observeEvent(input$rmodel_file, {
@@ -446,7 +445,7 @@ server <- function(input, output, session) {
         # Load the RData file
         #env.data <- new.env()
         datafile(get(load(input$rdata_file$datapath)))
-        return()
+        #return()
         # Get the first object (assuming it's the r4ss output)
         #obj_name <- ls(env.data)[1]
         # datafile(env.data[[obj_name]])
@@ -692,7 +691,8 @@ server <- function(input, output, session) {
               fleet.in = fleet.num,
               Sex = as.numeric(input$sex_num),
               Part.in = as.numeric(input$part_num),
-              Ltm.RP = input$mlt_rp
+              Ltm.RP = input$mlt_rp,
+              Lt.metric = input$lt_compare
             )
           },
           error = function(e) {
