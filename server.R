@@ -331,7 +331,7 @@ MeanLt.method <- function(
   colnames(spp.out.Ltm.dep)[ncol(spp.out.Ltm.dep)] <- "RP.test"
 
   lm.meanlt.plot <- ggplot(spp.out.Ltm.dep, aes(Mean, Deplete)) +
-    geom_point(size = 3, color = "#5D9741") +
+    geom_point(aes(size = Neff), color = "#5D9741") +
     geom_smooth(
       formula = y ~ x,
       method = "lm",
@@ -343,7 +343,7 @@ MeanLt.method <- function(
     theme_minimal()
 
   spp.mlt.lm.out <- lm(
-    Deplete ~ spp.out.Ltm.dep[, 6],
+    Deplete ~ spp.out.Ltm.dep$Mean,
     data = spp.out.Ltm.dep,
     weights = spp.out.Ltm.dep$Neff
   )
@@ -398,6 +398,219 @@ MeanLt.method <- function(
       spp.mlt.lm.out$coefficients[2]
   ))
 }
+#######################################
+
+###############################
+### Custom indicator method ###
+###############################
+Custom.method <- function(
+  file.in,
+  RP.in = 0.25,
+  origin_choice = "TRUE",
+  CR.in = "cr_ratio",
+  CR.cust = "I/RP"
+) {
+  #Extract years only with depletion
+  file.in.dep <- file.in[!is.na(file.in[, 2]), ]
+  file.in.nodep <- file.in[is.na(file.in[, 2]), ]
+  colnames(file.in.dep) <- colnames(file.in.nodep) <- c(
+    "Year",
+    "Depletion",
+    "Indicator",
+    "Weighting"
+  )
+
+  RP.test <- file.in.dep[, 1] <= RP.in
+  RP.test[RP.test == "TRUE"] <- "BELOW RP"
+  RP.test[RP.test == "FALSE"] <- "ABOVE RP"
+
+  file.in.dep$RP.test <- RP.test
+
+  CR.calc <- NA
+  if (CR.in == "cr_custom") {
+    CR.calc <- CR.cust
+  } else {
+    CR.calc <- switch(
+      CR.in,
+      "cr_ratio" = "I/RP",
+      "cr_cubic" = "0.2*((I/RP)-1)^3",
+      "cr_cubicpoly" = "0.2*((I/RP)-1)^3+0.05*((I/RP)-1)"
+    )
+  }
+
+  # Create plots
+  if (origin_choice == "TRUE") {
+    custom.lm.plot <- ggplot(file.in.dep, aes(Indicator, Depletion)) +
+      geom_point(size = 3, color = "#ca7908") +
+      geom_smooth(
+        formula = y ~ x + 0,
+        method = "lm",
+        weight = "Weighting",
+        color = "#ca7908",
+        fill = "#ca7908",
+        alpha = 0.2
+      ) +
+      labs(
+        title = "Index vs Depletion",
+        x = "Indicator",
+        y = "Depletion"
+      ) +
+      theme_minimal() +
+      theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+
+    custom.lm.out <- lm(
+      Depletion ~ Indicator + 0,
+      data = file.in.dep,
+      weights = file.in.dep$Weighting
+    )
+
+    custom.plot <- ggplot(data = file.in.dep) +
+      geom_errorbar(
+        aes(
+          Year,
+          ymin = Indicator - (Indicator * Weighting * 1.96),
+          ymax = Indicator + (Indicator * Weighting * 1.96),
+          color = RP.test
+        ),
+        width = 0.2
+      ) +
+      geom_point(
+        aes(Year, Indicator, color = RP.test),
+        size = 3
+      ) +
+      scale_color_manual(
+        name = "RP.test",
+        values = c(
+          "BELOW RP" = "darkred",
+          "ABOVE RP" = "green"
+        )
+      ) +
+      geom_hline(
+        yintercept = RP.in / custom.lm.out$coefficients[1],
+        col = "#E74C3C",
+        linetype = "dashed",
+        linewidth = 1
+      ) +
+      ylim(
+        0,
+        max(
+          file.in.dep$Indicator +
+            (file.in.dep$Indicator * file.in.dep$Weighting * 1.96),
+          RP.in / custom.lm.out$coefficients[1]
+        )
+      ) +
+      labs(
+        title = "Indicator Over Time with Reference Point",
+        x = "Year",
+        y = "Indicator"
+      ) +
+      theme_minimal() +
+      theme(
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        legend.position = "none"
+      )
+
+    I = file.in.nodep$Indicator
+    RP = RP.in / custom.lm.out$coefficients[1]
+    if (all(I != 0) & RP != 0) {
+      CR.calc.out <- eval(parse(text = CR.calc))
+    }
+  }
+
+  #Origin not set to 0
+  if (origin_choice == "FALSE") {
+    custom.lm.plot <- ggplot(file.in.dep, aes(Indicator, Depletion)) +
+      geom_point(size = 3, color = "#ca7908") +
+      geom_smooth(
+        formula = y ~ x,
+        method = "lm",
+        weight = "Weighting",
+        color = "#ca7908",
+        fill = "#ca7908",
+        alpha = 0.2
+      ) +
+      labs(
+        title = "Index vs Depletion",
+        x = "Indicator",
+        y = "Depletion"
+      ) +
+      theme_minimal() +
+      theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+
+    custom.lm.out <- lm(
+      Depletion ~ Indicator,
+      data = file.in.dep,
+      weights = file.in.dep$Weighting
+    )
+
+    custom.plot <- ggplot(data = file.in.dep) +
+      geom_errorbar(
+        aes(
+          Year,
+          ymin = Indicator - (Indicator * Weighting * 1.96),
+          ymax = Indicator + (Indicator * Weighting * 1.96),
+          color = RP.test
+        ),
+        width = 0.2
+      ) +
+      geom_point(
+        aes(Year, Indicator, color = RP.test),
+        size = 3
+      ) +
+      scale_color_manual(
+        name = "RP.test",
+        values = c(
+          "BELOW RP" = "darkred",
+          "ABOVE RP" = "green"
+        )
+      ) +
+      geom_hline(
+        yintercept = (RP.in - custom.lm.out$coefficients[1]) /
+          custom.lm.out$coefficients[2],
+        col = "#E74C3C",
+        linetype = "dashed",
+        linewidth = 1
+      ) +
+      ylim(
+        0,
+        max(
+          file.in.dep$Indicator +
+            (file.in.dep$Indicator * file.in.dep$Weighting * 1.96),
+          (RP.in - custom.lm.out$coefficients[1]) /
+            custom.lm.out$coefficients[2]
+        )
+      ) +
+      labs(
+        title = "Indicator Over Time with Reference Point",
+        x = "Year",
+        y = "Indicator"
+      ) +
+      theme_minimal() +
+      theme(
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        legend.position = "none"
+      )
+
+    I = file.in.nodep$Indicator
+    RP = (RP.in - custom.lm.out$coefficients[1]) / custom.lm.out$coefficients[2]
+    if (all(I != 0) & RP != 0) {
+      CR.calc.out <- eval(parse(text = CR.calc))
+    }
+    # Ind_RP_ratio = file.in.nodep$Indicator /
+    #   ((RP.in - custom.lm.out$coefficients[1]) / custom.lm.out$coefficients[2])
+  }
+  return(list(
+    data = file.in,
+    lm_plot = custom.lm.plot,
+    indicator_plot = custom.plot,
+    lm_model = custom.lm.out,
+    RP.out = RP,
+    Ind_RP = data.frame(
+      Year = file.in.nodep$Year,
+      Ind_RP_ratio = CR.calc.out
+    )
+  ))
+}
 ##########################################
 ##########################################
 
@@ -406,6 +619,7 @@ server <- function(input, output, session) {
   # Reactive value to store loaded data
   spp_data <- reactiveVal(NULL)
   datafile <- reactiveVal(NULL)
+  customfile <- reactiveVal(NULL)
   #envrep <- new.env()
   #envdat <- new.env()
 
@@ -449,6 +663,29 @@ server <- function(input, output, session) {
         # Get the first object (assuming it's the r4ss output)
         #obj_name <- ls(env.data)[1]
         # datafile(env.data[[obj_name]])
+
+        showNotification(
+          "Data loaded successfully!",
+          type = "message",
+          duration = 1.5
+        )
+      },
+      error = function(ee) {
+        showNotification(
+          paste("Error loading file:", ee$message),
+          type = "error"
+        )
+      }
+    )
+  })
+
+  observeEvent(input$custom_file, {
+    req(input$custom_file)
+    tryCatch(
+      {
+        # Load the RData file
+        #env.data <- new.env()
+        customfile(read.csv(input$custom_file$datapath, header = TRUE))
 
         showNotification(
           "Data loaded successfully!",
@@ -535,6 +772,7 @@ server <- function(input, output, session) {
     req(analysis_results())
     list(
       Model_summary = summary(analysis_results()$lm_model),
+      input$index_rp,
       Index_RP = input$index_rp / analysis_results()$lm_model$coefficients[1]
     )
   })
@@ -735,9 +973,83 @@ server <- function(input, output, session) {
     req(analysis_results_mlt())
     list(
       Model_summary = summary(analysis_results_mlt()$lm_model),
+      Deplete_RP = input$mlt_rp,
       Index_RP = (input$mlt_rp -
         analysis_results_mlt()$lm_model$coefficients[1]) /
         analysis_results_mlt()$lm_model$coefficients[2]
+    )
+  })
+
+  ########################
+  ### Custom Indicator ###
+  ########################
+
+  # Run Custom analysis when button is clicked
+
+  withProgress(message = 'Calculating length indicators', value = 0, {
+    analysis_results_custom <- eventReactive(input$run_analysis_custom, {
+      req(customfile())
+      customfile <- customfile()
+
+      custom.eq <- NULL
+      if (input$cr_equation_type == 'cr_custom') {
+        custom.eq <- input$cr_custom_eq
+      }
+
+      withProgress(message = 'Calculating indicators', value = 0, {
+        tryCatch(
+          {
+            Custom.method(
+              file.in = customfile,
+              RP.in = input$custom_rp,
+              origin_choice = input$origin_choice,
+              CR.in = input$cr_equation_type,
+              CR.cust = custom.eq
+            )
+          },
+          error = function(e) {
+            showNotification(
+              paste("Error running analysis:", e$message),
+              type = "error"
+            )
+            NULL
+          }
+        )
+      })
+    })
+  })
+
+  # Output: LM Plot
+  output$lm_plot_custom <- renderPlotly({
+    req(analysis_results_custom())
+    ggplotly(analysis_results_custom()$lm_plot)
+  })
+
+  # Output: Mean Length Plot
+  output$custom_plot <- renderPlotly({
+    req(analysis_results_custom())
+    ggplotly(analysis_results_custom()$indicator_plot)
+  })
+
+  # Output: Data Table
+  output$data_table_custom <- renderTable(
+    {
+      req(analysis_results_custom())
+      analysis_results_custom()$data
+    },
+    striped = TRUE,
+    hover = TRUE,
+    bordered = TRUE
+  )
+
+  # Output: Model Summary
+  output$model_summary_custom <- renderPrint({
+    req(analysis_results_custom())
+    list(
+      Model_summary = summary(analysis_results_custom()$lm_model),
+      Deplete_RP = input$custom_rp,
+      Index_RP = analysis_results_custom()$RP.out,
+      Ind_RP = analysis_results_custom()$Ind_RP
     )
   })
 }
