@@ -407,6 +407,7 @@ Custom.method <- function(
   file.in,
   RP.in = 0.25,
   origin_choice = "TRUE",
+  #CI.opt = "SD",
   CR.in = "cr_ratio",
   CR.cust = "I/RP"
 ) {
@@ -417,14 +418,29 @@ Custom.method <- function(
     "Year",
     "Depletion",
     "Indicator",
-    "Weighting"
+    "CI_low",
+    "CI_high"
   )
 
-  RP.test <- file.in.dep[, 1] <= RP.in
+  RP.test <- file.in.dep$Depletion <= RP.in
   RP.test[RP.test == "TRUE"] <- "BELOW RP"
   RP.test[RP.test == "FALSE"] <- "ABOVE RP"
 
   file.in.dep$RP.test <- RP.test
+  file.in.nodep$RP.test <- NA
+
+  #CIs
+  # if (CI.opt == "SD") {
+  #   CI_hi <- file.in.dep$Indicator +
+  #     (file.in.dep$Indicator * file.in.dep$Weighting * 1.96)
+  #   CI_low <- file.in.dep$Indicator -
+  #     (file.in.dep$Indicator * file.in.dep$Weighting * 1.96)
+  # }
+
+  # if (CI.opt == "CI") {
+  #   CI_hi <- file.in.dep$Indicator + file.in.dep$Weighting
+  #   CI_low <- file.in.dep$Indicator - file.in.dep$Weighting
+  # }
 
   CR.calc <- NA
   if (CR.in == "cr_custom") {
@@ -468,8 +484,8 @@ Custom.method <- function(
       geom_errorbar(
         aes(
           Year,
-          ymin = Indicator - (Indicator * Weighting * 1.96),
-          ymax = Indicator + (Indicator * Weighting * 1.96),
+          ymin = CI_low,
+          ymax = CI_high,
           color = RP.test
         ),
         width = 0.2
@@ -494,8 +510,7 @@ Custom.method <- function(
       ylim(
         0,
         max(
-          file.in.dep$Indicator +
-            (file.in.dep$Indicator * file.in.dep$Weighting * 1.96),
+          file.in.dep$CI_high,
           RP.in / custom.lm.out$coefficients[1]
         )
       ) +
@@ -510,7 +525,8 @@ Custom.method <- function(
         legend.position = "none"
       )
 
-    I = file.in.nodep$Indicator
+    I = file.in.dep$Indicator
+    #I = file.in.nodep$Indicator
     RP = RP.in / custom.lm.out$coefficients[1]
     if (all(I != 0) & RP != 0) {
       CR.calc.out <- eval(parse(text = CR.calc))
@@ -547,8 +563,8 @@ Custom.method <- function(
       geom_errorbar(
         aes(
           Year,
-          ymin = Indicator - (Indicator * Weighting * 1.96),
-          ymax = Indicator + (Indicator * Weighting * 1.96),
+          ymin = CI_low,
+          ymax = CI_high,
           color = RP.test
         ),
         width = 0.2
@@ -574,8 +590,7 @@ Custom.method <- function(
       ylim(
         0,
         max(
-          file.in.dep$Indicator +
-            (file.in.dep$Indicator * file.in.dep$Weighting * 1.96),
+          file.in.dep$CI_high,
           (RP.in - custom.lm.out$coefficients[1]) /
             custom.lm.out$coefficients[2]
         )
@@ -591,7 +606,8 @@ Custom.method <- function(
         legend.position = "none"
       )
 
-    I = file.in.nodep$Indicator
+    I = file.in.dep$Indicator
+    #I = file.in.nodep$Indicator
     RP = (RP.in - custom.lm.out$coefficients[1]) / custom.lm.out$coefficients[2]
     if (all(I != 0) & RP != 0) {
       CR.calc.out <- eval(parse(text = CR.calc))
@@ -600,13 +616,14 @@ Custom.method <- function(
     #   ((RP.in - custom.lm.out$coefficients[1]) / custom.lm.out$coefficients[2])
   }
   return(list(
-    data = file.in,
+    data = rbind(file.in.dep, file.in.nodep),
     lm_plot = custom.lm.plot,
     indicator_plot = custom.plot,
     lm_model = custom.lm.out,
     RP.out = RP,
     Ind_RP = data.frame(
-      Year = file.in.nodep$Year,
+      Year = file.in.dep$Year,
+      #Year = file.in.nodep$Year,
       Ind_RP_ratio = CR.calc.out
     )
   ))
@@ -1002,6 +1019,7 @@ server <- function(input, output, session) {
             Custom.method(
               file.in = customfile,
               RP.in = input$custom_rp,
+              #CI.opt = input$var_choice,
               origin_choice = input$origin_choice,
               CR.in = input$cr_equation_type,
               CR.cust = custom.eq

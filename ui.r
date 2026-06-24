@@ -142,15 +142,15 @@ ui <- page_sidebar(
           ),
           column(
             width = 6,
-            selectInput(
-              "var_choice",
-              "Uncertainty input",
-              choices = c("SD", "CI"),
-              selected = "Mean"
-            )
+            checkboxInput("origin_choice", "Origin=0", TRUE),
+            # selectInput(
+            #   "var_choice",
+            #   "Uncertainty input",
+            #   choices = c("SD", "CI"),
+            #   selected = "Mean"
+            # )
           )
         ),
-        checkboxInput("origin_choice", "Origin=0", TRUE),
         selectInput(
           "cr_equation_type",
           "Control Rule Option:",
@@ -269,7 +269,7 @@ ui <- page_sidebar(
         ),
         card(
           full_screen = TRUE,
-          card_header("Linear Model Summary"),
+          card_header("Linear Model and Control Rule Summary"),
           verbatimTextOutput("model_summary_custom")
         )
       )
