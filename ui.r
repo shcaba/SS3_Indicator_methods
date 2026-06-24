@@ -55,7 +55,7 @@ ui <- page_sidebar(
           value = 0.25,
           min = 0,
           max = 1,
-          step = 0.05
+          step = 0.01
         ),
         actionButton(
           "run_analysis_index",
@@ -102,7 +102,7 @@ ui <- page_sidebar(
           value = 0.25,
           min = 0,
           max = 1,
-          step = 0.05
+          step = 0.01
           #)
         ),
         #column(
@@ -137,12 +137,19 @@ ui <- page_sidebar(
               value = 0.25,
               min = 0,
               max = 1,
-              step = 0.05
+              step = 0.01
             )
           ),
           column(
             width = 6,
-            checkboxInput("origin_choice", "Origin=0", TRUE),
+            numericInput(
+              "custom_msy",
+              "Target catch",
+              value = NA,
+              min = 0,
+              max = 1000000000,
+              step = 0.01
+            )
             # selectInput(
             #   "var_choice",
             #   "Uncertainty input",
@@ -151,13 +158,14 @@ ui <- page_sidebar(
             # )
           )
         ),
+        checkboxInput("origin_choice", "Origin=0", TRUE),
         selectInput(
           "cr_equation_type",
           "Control Rule Option:",
           choices = list(
             "Simple ratio (CR= I/RP)" = "cr_ratio",
-            "Cubic (CR = 0.2*((I/RP)-1)^3)" = "cr_cubic",
-            "Cubic polynomial (CR = 0.2*((I/RP)-1)^3+0.05*((I/RP)-1))" = "cr_cubicpoly",
+            "Cubic (CR = 1+(0.2*((I/RP)-1)^3))" = "cr_cubic",
+            "Cubic polynomial (CR = 1+(0.2*((I/RP)-1)^3+0.05*((I/RP)-1)))" = "cr_cubicpoly",
             "Custom Equation" = "cr_custom"
           ),
           selected = "ratio"

@@ -406,6 +406,7 @@ MeanLt.method <- function(
 Custom.method <- function(
   file.in,
   RP.in = 0.25,
+  MSY = 1,
   origin_choice = "TRUE",
   #CI.opt = "SD",
   CR.in = "cr_ratio",
@@ -449,8 +450,8 @@ Custom.method <- function(
     CR.calc <- switch(
       CR.in,
       "cr_ratio" = "I/RP",
-      "cr_cubic" = "0.2*((I/RP)-1)^3",
-      "cr_cubicpoly" = "0.2*((I/RP)-1)^3+0.05*((I/RP)-1)"
+      "cr_cubic" = "1+(0.2*((I/RP)-1)^3)",
+      "cr_cubicpoly" = "1+(0.2*((I/RP)-1)^3+0.05*((I/RP)-1))"
     )
   }
 
@@ -624,7 +625,8 @@ Custom.method <- function(
     Ind_RP = data.frame(
       Year = file.in.dep$Year,
       #Year = file.in.nodep$Year,
-      Ind_RP_ratio = CR.calc.out
+      Ind_RP_ratio = CR.calc.out,
+      Catch_target = CR.calc.out * MSY
     )
   ))
 }
@@ -1019,6 +1021,7 @@ server <- function(input, output, session) {
             Custom.method(
               file.in = customfile,
               RP.in = input$custom_rp,
+              MSY = input$custom_msy,
               #CI.opt = input$var_choice,
               origin_choice = input$origin_choice,
               CR.in = input$cr_equation_type,
