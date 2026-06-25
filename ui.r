@@ -145,7 +145,7 @@ ui <- page_sidebar(
             numericInput(
               "custom_msy",
               "Target catch",
-              value = NA,
+              value = 5000,
               min = 0,
               max = 1000000000,
               step = 0.01

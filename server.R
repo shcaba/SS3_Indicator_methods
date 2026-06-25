@@ -422,6 +422,8 @@ Custom.method <- function(
     "CI_low",
     "CI_high"
   )
+  file.in.dep$Depletion = as.numeric(file.in.dep$Depletion)
+  file.in.nodep$Depletion = as.numeric(file.in.nodep$Depletion)
 
   RP.test <- file.in.dep$Depletion <= RP.in
   RP.test[RP.test == "TRUE"] <- "BELOW RP"
@@ -457,7 +459,10 @@ Custom.method <- function(
 
   # Create plots
   if (origin_choice == "TRUE") {
-    custom.lm.plot <- ggplot(file.in.dep, aes(Indicator, Depletion)) +
+    custom.lm.plot <- ggplot(
+      file.in.dep,
+      aes(Indicator, Depletion)
+    ) +
       geom_point(size = 3, color = "#ca7908") +
       geom_smooth(
         formula = y ~ x + 0,
@@ -536,7 +541,10 @@ Custom.method <- function(
 
   #Origin not set to 0
   if (origin_choice == "FALSE") {
-    custom.lm.plot <- ggplot(file.in.dep, aes(Indicator, Depletion)) +
+    custom.lm.plot <- ggplot(
+      file.in.dep,
+      aes(Indicator, Depletion)
+    ) +
       geom_point(size = 3, color = "#ca7908") +
       geom_smooth(
         formula = y ~ x,
