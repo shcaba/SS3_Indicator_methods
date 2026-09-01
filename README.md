@@ -1,2 +1,2 @@
 An app that runs abundance and mean-length based indicators for stocks that have SS3 stock assessments. These approaches can be used as either a trigger to prioritize a full stock assessment or could be developed into a managment procedure. These methods are meant to help allevaite resource limitations that prohibit full assessments for all stocks.
-An online version of this app is available [here](https://github.com/shcaba/SS3_Indicator_methods).
+An online version of this app is available [here](https://github.com/shcaba/SS3_Indicator_methods](https://connect.fisheries.noaa.gov/SS3IndicatorMethods/).
