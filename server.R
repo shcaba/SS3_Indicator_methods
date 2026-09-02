@@ -348,7 +348,7 @@ MeanLt.method <- function(
     weights = spp.out.Ltm.dep$Neff
   )
 
-  Metric_lt = spp.out.Ltm.dep[, names(spp.out.Ltm.dep) == Lt.metric]
+  Metric_lt <- spp.out.Ltm.dep[, names(spp.out.Ltm.dep) == Lt.metric]
 
   MeanLt.plot <- ggplot(data = spp.out.Ltm.dep) +
     geom_errorbar(
@@ -422,8 +422,8 @@ Custom.method <- function(
     "CI_low",
     "CI_high"
   )
-  file.in.dep$Depletion = as.numeric(file.in.dep$Depletion)
-  file.in.nodep$Depletion = as.numeric(file.in.nodep$Depletion)
+  file.in.dep$Depletion <- as.numeric(file.in.dep$Depletion)
+  file.in.nodep$Depletion <- as.numeric(file.in.nodep$Depletion)
 
   RP.test <- file.in.dep$Depletion <= RP.in
   RP.test[RP.test == "TRUE"] <- "BELOW RP"
@@ -486,6 +486,29 @@ Custom.method <- function(
       weights = file.in.dep$Weighting
     )
 
+    #Calculate RP for each year using leave-one-out cross-validation
+    custom.lm.outsamp.RP <- data.frame(
+      Year_term = rep(NA, (length(length(file.in.dep$Indicator):3) + 1)),
+      RP_Ind = rep(NA, (length(length(file.in.dep$Indicator):3) + 1))
+    )
+    custom.lm.outsamp.RP$Year_term[1] <- tail(file.in.dep$Year, 1)
+    custom.lm.outsamp.RP$RP_Ind[1] <- RP.in /
+      custom.lm.out$coefficients[1]
+
+    ppp <- 2
+    for (i in length(file.in.dep$Indicator):3) {
+      file.in.dep.temp <- file.in.dep[-(length(file.in.dep$Indicator):i), ]
+      custom.lm.outsamp <- lm(
+        Depletion ~ Indicator + 0,
+        data = file.in.dep.temp,
+        weights = file.in.dep.temp$Weighting
+      )
+      custom.lm.outsamp.RP$Year_term[ppp] <- tail(file.in.dep.temp$Year, 1)
+      custom.lm.outsamp.RP$RP_Ind[ppp] <- RP.in /
+        custom.lm.outsamp$coefficients[1]
+      ppp <- ppp + 1
+    }
+
     custom.plot <- ggplot(data = file.in.dep) +
       geom_errorbar(
         aes(
@@ -531,9 +554,9 @@ Custom.method <- function(
         legend.position = "none"
       )
 
-    I = file.in.dep$Indicator
+    I <- file.in.dep$Indicator
     #I = file.in.nodep$Indicator
-    RP = RP.in / custom.lm.out$coefficients[1]
+    RP <- RP.in / custom.lm.out$coefficients[1]
     if (all(I != 0) & RP != 0) {
       CR.calc.out <- eval(parse(text = CR.calc))
     }
@@ -568,6 +591,24 @@ Custom.method <- function(
       weights = file.in.dep$Weighting
     )
 
+    #Calculate RP for each year using leave-one-out cross-validation
+    custom.lm.outsamp.RP <- data.frame(
+      Year_term = rep(NA, length(length(file.in.dep$Indicator):3)),
+      RP_Ind = rep(NA, length(length(file.in.dep$Indicator):3))
+    )
+    ppp <- 1
+    for (i in length(file.in.dep$Indicator):3) {
+      file.in.dep.temp <- file.in.dep[-(length(file.in.dep$Indicator):i), ]
+      custom.lm.outsamp <- lm(
+        Depletion ~ Indicator,
+        data = file.in.dep.temp,
+        weights = file.in.dep.temp$Weighting
+      )
+      custom.lm.outsamp.RP$Year_term[ppp] <- tail(file.in.dep.temp$Year, 1)
+      custom.lm.outsamp.RP$RP_Ind[ppp] <- RP.in /
+        custom.lm.outsamp$coefficients[1]
+      ppp <- ppp + 1
+    }
     custom.plot <- ggplot(data = file.in.dep) +
       geom_errorbar(
         aes(
@@ -615,9 +656,10 @@ Custom.method <- function(
         legend.position = "none"
       )
 
-    I = file.in.dep$Indicator
+    I <- file.in.dep$Indicator
     #I = file.in.nodep$Indicator
-    RP = (RP.in - custom.lm.out$coefficients[1]) / custom.lm.out$coefficients[2]
+    RP <- (RP.in - custom.lm.out$coefficients[1]) /
+      custom.lm.out$coefficients[2]
     if (all(I != 0) & RP != 0) {
       CR.calc.out <- eval(parse(text = CR.calc))
     }
@@ -635,7 +677,8 @@ Custom.method <- function(
       #Year = file.in.nodep$Year,
       Ind_RP_ratio = CR.calc.out,
       Catch_target = CR.calc.out * MSY
-    )
+    ),
+    RP_yr = custom.lm.outsamp.RP
   ))
 }
 ##########################################
@@ -1078,7 +1121,8 @@ server <- function(input, output, session) {
       Model_summary = summary(analysis_results_custom()$lm_model),
       Deplete_RP = input$custom_rp,
       Index_RP = analysis_results_custom()$RP.out,
-      Ind_RP = analysis_results_custom()$Ind_RP
+      Ind_RP = analysis_results_custom()$Ind_RP,
+      RP_yr = analysis_results_custom()$RP_yr
     )
   })
 }
